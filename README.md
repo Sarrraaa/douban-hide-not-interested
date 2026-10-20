@@ -1,0 +1,1 @@
+# douban-hide-not-interested
