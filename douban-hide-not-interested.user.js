@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         豆瓣 · 不想看隐藏
 // @namespace    local.douban-hide-not-interested
-// @version      1.1.0
+// @version      1.1.1
 // @description  本地标记不想看、隐藏卡片，并添加个人标签；无自动采集、网络请求或 IMDb 同步。
 // @downloadURL  https://raw.githubusercontent.com/Sarrraaa/douban-hide-not-interested/main/douban-hide-not-interested.user.js
 // @updateURL    https://raw.githubusercontent.com/Sarrraaa/douban-hide-not-interested/main/douban-hide-not-interested.user.js
@@ -62,6 +62,9 @@
     '.subject-item',
     '.doulist-item',
     '.movie-list-panel > .movie-list-item',
+    '.movie-list-item',
+    '#content .movie-list > li',
+    '#content .article li',
     '#content .item',
     '#content .subject',
   ].join(',');
@@ -69,19 +72,23 @@
   function subjectId(href) {
     try {
       const u = new URL(href, location.href);
-      if (u.protocol !== 'https:') return null;
+      if (u.protocol !== 'https:' || u.username || u.password || u.port) return null;
       if (u.hostname === 'movie.douban.com') {
         const direct = u.pathname.match(/^\/subject\/(\d+)\/?$/);
         if (direct) return direct[1];
+      }
+      if (['www.douban.com', 'm.douban.com', 'movie.douban.com'].includes(u.hostname)) {
+        // 选电影 /explore uses www.douban.com/doubanapp/dispatch?uri=/movie/ID
+        // Parse locally: do not follow or request any redirect destination.
         if (u.pathname === '/doubanapp/dispatch') {
           const uri = u.searchParams.get('uri') || '';
-          return uri.match(/^\/(?:movie|tv)\/(\d+)(?:\/|$)/)?.[1] || null;
+          const match = uri.match(/^\/?(?:movie|tv)\/(\d+)\/?$/);
+          if (match) return match[1];
         }
+        const mobile = u.pathname.match(/^\/(?:movie|tv)\/subject\/(\d+)\/?$/);
+        if (mobile) return mobile[1];
       }
-      if (u.hostname === 'm.douban.com') {
-        return u.pathname.match(/^\/(?:movie|tv)\/subject\/(\d+)\/?$/)?.[1] || null;
-      }
-    } catch { /* Invalid or non-HTTP link. */ }
+    } catch { /* Invalid or unsupported link. */ }
     return null;
   }
 
